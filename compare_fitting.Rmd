@@ -13,26 +13,231 @@ library(PerformanceAnalytics)
 
 ```
 
+```{r}
+data_summary <- function(data, varname, groupnames){
+  # Function to calculate the mean and the standard error
+  # for each group
+  #+++++++++++++++++++++++++
+  # data : a data frame
+  # varname : the name of a column containing the variable
+  #to be summariezed
+  # groupnames : vector of column names to be used as
+  # grouping variables
+  
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE)/sqrt(length(x[[col]])))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+```
+
+
 Load data sheet
 ```{r}
 fitpar_path <- 'D:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior fitpar files'
 
 wave1 = '08210219'
 wave2 = '08210319'
+wave3 = '08210419'
+# wave4 = ''
 
 file1 = file.path(fitpar_path, paste('Behavior data fitpar_', wave1, sep=''), paste('param_Behavior data fitpar_', wave1, '.txt', sep=''))
 file2 = file.path(fitpar_path, paste('Behavior data fitpar_', wave2, sep=''), paste('param_Behavior data fitpar_', wave2, '.txt', sep=''))
+file3 = file.path(fitpar_path, paste('Behavior data fitpar_', wave3, sep=''), paste('param_Behavior data fitpar_', wave3, '.txt', sep=''))
+
 
 fit1 <- read.delim(file1, header = TRUE, sep = "\t")
 fit2 <- read.delim(file2, header = TRUE, sep = "\t")
+fit3 <- read.delim(file3, header = TRUE, sep = "\t")
 
+```
+
+```{r}
+fit1$val_start = 10
+fit2$val_start = 20
+fit3$val_start = 100
+```
+
+```{r}
+names(fit1)
+val_plot = rbind(fit1[,c(5:8, 30)], fit2[,c(5:8, 30)], fit3[,c(5:8, 30)])
+val_plot$val_start = as.factor(val_plot$val_start)
+val_plot$id = as.factor(fit1$id)
+
+val2plot <- data_summary(val_plot,varname='val1_mon',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val1_mon), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val1_mon-sd, ymax=val1_mon+sd), width=0.2, position=position_dodge(0.9))
+
+val2plot <- data_summary(val_plot,varname='val2_mon',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val2_mon), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val2_mon-sd, ymax=val2_mon+sd), width=0.2, position=position_dodge(0.9))
+
+val2plot <- data_summary(val_plot,varname='val3_mon',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val3_mon), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val3_mon-sd, ymax=val3_mon+sd), width=0.2, position=position_dodge(0.9))
+
+val2plot <- data_summary(val_plot,varname='val4_mon',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val4_mon), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val4_mon-sd, ymax=val4_mon+sd), width=0.2, position=position_dodge(0.9))
+
+```
+
+Plot distributions of fitted value parameters
+```{r}
+val_plot_re$level <- as.factor(val_plot_re$level)
+val_start2plot = 100
+ggplot(val_plot_re[val_plot_re$val_start == val_start2plot,], aes(x=val_mon, fill = level, color = level)) +
+  # geom_histogram(position = "identity", alpha = 0.6) +
+  geom_histogram(position = "identity", alpha = 0.6, breaks=seq(0,300,5)) +
+  scale_fill_brewer(palette="YlOrRd") +
+  scale_color_brewer(palette="YlOrRd") +
+  ggtitle(paste("Value search starting point", val_start2plot))
+```
+
+Nomalize value
+```{r}
+colnames(val_plot)
+
+val_norm <- as.data.frame(t(apply(val_plot[,1:4], 1, function(x) (x - mean(x))/sd(x))))
+
+val_plot[, 6:9] = data.frame("val1_mon_norm" = val_norm[,1],
+                             "val2_mon_norm" = val_norm[,2],
+                             "val3_mon_norm" = val_norm[,3],
+                             "val4_mon_norm" = val_norm[,4])
+```
+
+plot normalized value by value starting search point
+```{r}
+val2plot <- data_summary(val_plot,varname='val1_mon_norm',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val1_mon_norm), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val1_mon_norm-sd, ymax=val1_mon_norm+sd), width=0.2, position=position_dodge(0.9))
+
+val2plot <- data_summary(val_plot,varname='val2_mon_norm',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val2_mon_norm), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val2_mon_norm-sd, ymax=val2_mon_norm+sd), width=0.2, position=position_dodge(0.9))
+
+val2plot <- data_summary(val_plot,varname='val3_mon_norm',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val3_mon_norm), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val3_mon_norm-sd, ymax=val3_mon_norm+sd), width=0.2, position=position_dodge(0.9))
+
+val2plot <- data_summary(val_plot,varname='val4_mon_norm',groupnames=c("val_start"))
+ggplot(data=val2plot,aes(x=val_start, y = val4_mon_norm), fill=val_start) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val4_mon_norm-sd, ymax=val4_mon_norm+sd), width=0.2, position=position_dodge(0.9))
+```
+
+reorganize data frame for plotting values
+```{r}
+val_plot2 <- val_plot
+colnames(val_plot2)[6] <- 'val_mon_norm'
+colnames(val_plot2)[7] <- 'val_mon_norm'
+colnames(val_plot2)[8] <- 'val_mon_norm'
+colnames(val_plot2)[9] <- 'val_mon_norm'
+
+colnames(val_plot2)[1] <- 'val_mon'
+colnames(val_plot2)[2] <- 'val_mon'
+colnames(val_plot2)[3] <- 'val_mon'
+colnames(val_plot2)[4] <- 'val_mon'
+
+View(val_plot2)
+val_plot2$level1 <- 1
+val_plot2$level2 <- 2
+val_plot2$level3 <- 3
+val_plot2$level4 <- 4
+colnames(val_plot2)[11:14] <- "level"
+val_plot2$reward1 <- 5
+val_plot2$reward2 <- 8
+val_plot2$reward3 <- 12
+val_plot2$reward4 <- 25
+colnames(val_plot2)[15:18] <- "reward"
+val_plot_re <- rbind(val_plot2[,c(1,5,6,10,11,15)],val_plot2[,c(2,5,7,10,12,16)],
+                   val_plot2[,c(3,5,8,10,13,17)],val_plot2[,c(4,5,9,10,14,18)])
+
+View(val_plot_re)
+```
+
+Plot normalized value parameters
+```{r}
+val_start2plot = 100
+val2plot <- data_summary(val_plot_re[val_plot_re$val_start ==val_start2plot,],
+                         varname = 'val_mon_norm',
+                         groupnames = 'level')
+
+ggplot(val2plot, aes(x=level, y=val_mon_norm)) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val_mon_norm-sd, ymax=val_mon_norm+sd), width=0.2, position=position_dodge(0.9)) + 
+  ggtitle(paste('Value search starting point', val_start2plot))
+
+val_start2plot = 100
+val2plot <- data_summary(val_plot_re[val_plot_re$val_start ==val_start2plot,],
+                         varname = 'val_mon_norm',
+                         groupnames = 'reward')
+
+ggplot(val2plot, aes(x=reward, y=val_mon_norm)) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin=val_mon_norm-sd, ymax=val_mon_norm+sd), width=0.2, position=position_dodge(0.9)) + 
+  scale_x_continuous(breaks = seq(5,25,5)) +
+  ggtitle(paste('Value search starting point', val_start2plot))
 ```
 
 
 ```{r}
+val_plot <- data.frame('val1_1' = fit1$val1_mon,'val1_2'= fit2$val1_mon, 'val1_3'= fit3$val1_mon,
+                       'val2_1' = fit1$val2_mon,'val2_2'= fit2$val2_mon, 'val2_3'= fit3$val2_mon,
+                       'val3_1' = fit1$val3_mon,'val3_2'= fit2$val3_mon, 'val3_3'= fit3$val3_mon,
+                       'val4_1' = fit1$val4_mon,'val4_2'= fit2$val4_mon, 'val4_3'= fit3$val4_mon)
+
+# ggplot(val_plot, aes(x=val4_1, y=val4_2)) +
+#   geom_point() +
+#   # scale_x_continuous(limits = c(0,100)) +
+#   # scale_y_continuous(limits = c(0,100)) +
+#   geom_abline(intercept = 0, slope = 1, color = "blue") +
+#   xlab('Grid step = 0.5') + ylab('Grid step = 0.2') +
+#   ggtitle('Val4')
+
+# chart.Correlation(val_plot[,1:3])
+
 
 ```
 
+Comparing adjusted r2
+```{r}
+monpar_plot <- data.frame('r2_10' = fit1$r2_adj_mon,'r2_20'= fit2$r2_adj_mon, 'r2_100' = fit3$r2_adj_mon)
+medpar_plot <- data.frame('r2_10' = fit1$r2_adj_med,'r2_20'= fit2$r2_adj_med, 'r2_100' = fit3$r2_adj_med)
+
+chart.Correlation(monpar_plot)
+chart.Correlation(medpar_plot)
+```
+
+alpha
+```{r}
+monpar_plot <- data.frame('alpha_10' = fit1$alpha_mon,'alpha_20'= fit2$alpha_mon, 'alpha_100' = fit3$alpha_mon)
+medpar_plot <- data.frame('alpha_10' = fit1$alpha_med,'alpha_20'= fit2$alpha_med, 'alpha_100' = fit3$alpha_med)
+
+chart.Correlation(monpar_plot)
+chart.Correlation(medpar_plot)
+```
+
+beta
+```{r}
+monpar_plot <- data.frame('beta_10' = fit1$beta_mon,'beta_20'= fit2$beta_mon, 'beta_100' = fit3$beta_mon)
+medpar_plot <- data.frame('beta_10' = fit1$beta_med,'beta_20'= fit2$beta_med, 'beta_100' = fit3$beta_med)
+
+chart.Correlation(monpar_plot)
+chart.Correlation(medpar_plot)
+```
 
 ```{r}
 # sort fit1 and fit2 by id
@@ -42,7 +247,8 @@ ggplot(par_plot, aes(x=r2_1, y=r2_2)) +
   geom_point() +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  geom_abline(intercept = 0, slope = 1, color = "blue")
+  geom_abline(intercept = 0, slope = 1, color = "blue") +
+  xlab('Grid step = 0.5') + ylab('Grid step = 0.2')
 ```
 
 
@@ -62,10 +268,10 @@ beta_plot <- data.frame('beta_1' = fit1$beta_mon,'beta_2'= fit2$beta_mon)
 
 ggplot(beta_plot, aes(x=beta_1, y=beta_2)) +
   geom_point() +
-  # scale_x_continuous(limits=c(-1.5, 3)) +
-  # scale_y_continuous(limits=c(-1.5, 3)) +
+  # scale_x_continuous(limits=c(-1.5, 6)) +
+  # scale_y_continuous(limits=c(-1.5, 6)) +
   geom_abline(intercept = 0, slope = 1, color = "blue") +
-  xlab('ambigNriskValPar_10') + ylab('ambigNriskValPar_10')
+  xlab('Grid search step = 0.5') + ylab('Grid search step = 0.5')
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
