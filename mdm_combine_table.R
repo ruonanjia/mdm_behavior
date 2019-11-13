@@ -22,4 +22,4 @@ data_all$id <- as.factor(data_all$id)
 data_all$is_med <- as.factor(data_all$is_med)
 data_all$is_male <- as.factor(data_all$is_male)
 
-save(data_all, file = "data_all_11122019.rda")
+save(data_all, file = "data_all_11132019.rda")
