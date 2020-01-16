@@ -11,6 +11,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 library(ggplot2)
 library(PerformanceAnalytics)
 library(psych)
+library(tidyverse)
 
 ```
 
@@ -37,7 +38,106 @@ data_summary <- function(data, varname, groupnames){
 }
 ```
 
+Load data sheet
+```{r}
+fitpar_path <- 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis'
+setwd(fitpar_path)
 
+fit1 <- read.csv('par_09300219.csv', header = TRUE)
+fit2 <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
+log <- read.csv("log_11082019.csv", header = TRUE)
+
+```
+
+
+Clean data sheet
+```{r}
+fit2 = fit2[fit2$model == 'ambigNrisk' & fit2$fitby == 'rating', ]
+
+# included subjects
+ids = unique(log$id[log$is_exclude_behavior == 0])
+
+ids
+```
+
+combine table
+```{r}
+names(fit1)
+names(fit2)
+
+fit_new = fit1 %>% select((id),(is_med),(alpha),(beta),(gamma),(val1), (val2), (val3), (val4), (LL),(AIC),(BIC),(model))
+
+fit_old = fit2 %>% select((id),(is_med),(alpha),(beta),(gamma),(LL),(AIC),(BIC),(model))
+fit_old$val1 <- NaN
+fit_old$val2 <- NaN
+fit_old$val3 <- NaN
+fit_old$val4 <- NaN
+# fit_old = fit_old %>% rename(alpha2=alpha, beta2=beta, gamma2 = gamma)
+
+fit_all <- merge(fit_new, fit_old, by = intersect(names(fit_new), names(fit_old)))
+
+fit_all <- rbind(fit_new, fit_old)
+fit_all$id <- as.factor(fit_all$id)
+fit_all$is_med <- as.factor(fit_all$is_med)
+fit_all$model <- as.factor(fit_all$model)
+
+names(fit_all)
+
+write.csv(fit_all, 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis/compare_model_fitting.csv')
+```
+
+
+plot
+```{r}
+fit_plot <- data_summary(fit_all, varname = "BIC", groupnames=c("is_med", "model"))
+
+ggplot(data = fit_plot, aes(x = is_med, y = BIC, fill = model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=BIC-sd, ymax=BIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(limits = c(1,0), values = c( 'darkorange3', 'olivedrab'), labels = c('Medical', 'Monetary')) +
+  theme_classic() +
+  ggtitle('Compare model fitting') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+fit_plot <- data_summary(fit_all, varname = "AIC", groupnames=c("is_med", "model"))
+
+ggplot(data = fit_plot, aes(x = is_med, y = AIC, fill = model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=AIC-sd, ymax=AIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(limits = c(1,0), values = c( 'darkorange3', 'olivedrab'), labels = c('Medical', 'Monetary')) +
+  theme_classic() +
+  ggtitle('Compare model fitting') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+fit_plot <- data_summary(fit_all, varname = "LL", groupnames=c("is_med", "model"))
+
+ggplot(data = fit_plot, aes(x = is_med, y = LL, fill = model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=LL-sd, ymax=LL+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(limits = c(1,0), values = c( 'darkorange3', 'olivedrab'), labels = c('Medical', 'Monetary')) +
+  theme_classic() +
+  ggtitle('Compare model fitting') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+Compare by looking at different waves
 Load data sheet
 ```{r}
 fitpar_path <- 'D:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior fitpar files'
