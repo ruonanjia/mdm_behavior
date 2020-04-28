@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(ggplot2)
+library(PerformanceAnalytics)
+library(psych)
+library(tidyverse)
+library(minpack.lm)
+```
+
+
+Read data
+```{r}
+path <- "E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
+setwd(path)
+load("data_all_01272020.rda")
+
+data <- data_all[data_all$is_exclude_behavior == 0, ]
+# data <- data_all
+data$beta_t <- -data$beta
+
+```
+
+recover alpha in the monetary domain
+```{r}
+# colnames(data)
+data_mon <- data[data$is_med == 0, ]
+vals_obj = c(0, 5, 8, 12, 25)
+# View(data_mon)
+data_mon$k <- NA
+data_mon$alpha_rec <- NA
+
+for (sub_idx in 1:dim(data_mon)[1]) {
+  vals <- as.numeric(data_mon[sub_idx, 37:40])
+  vals <- c(0, vals)
+  fit_model <- nlsLM(vals ~ k*vals_obj^alpha, start = list(k = 1, alpha = 1), data = data.frame(vals, vals_obj))
+  k <- coef(fit_model)[1]
+  alpha_rec <- coef(fit_model)[2]
+  data_mon$k <- k
+  data_mon$alpha_rec[sub_idx] <- alpha_rec
+  plot(vals_obj, vals, main = c(k, alpha_rec))
+  lines(seq(0,25,0.1), k*seq(0,25,0.1)^alpha_rec)
+}
+
+```
+
+
+compare with alphas from the original model
+```{r}
+fitpar_path <- 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis'
+setwd(fitpar_path)
+
+# fit1 <- read.csv('par_09300219.csv', header = TRUE)
+allfit <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
+# log <- read.csv("log_11082019.csv", header = TRUE)
+
+fit_old <- allfit[allfit$model == 'ambigNrisk' & allfit$fitby == 'value', c(1,2)]
+
+View(fit_old)
+
+data_mon_new <- merge(data_mon, fit_old, by = "id")
+
+plot(data_mon_new$alpha.y, data_mon_new$alpha_rec,
+     xlab = "alpha, original model",
+     ylab = "recovered alpha, new model")
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
