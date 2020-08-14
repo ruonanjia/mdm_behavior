@@ -13,6 +13,8 @@ library(PerformanceAnalytics)
 library(psych)
 library(tidyverse)
 library(minpack.lm)
+library(viridis)
+
 ```
 
 
@@ -20,7 +22,7 @@ Read data
 ```{r}
 path <- "E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
 setwd(path)
-load("data_all_01272020.rda")
+load("data_all_01272020.rda") # value constrained between 0-50
 
 data <- data_all[data_all$is_exclude_behavior == 0, ]
 # data <- data_all
@@ -36,7 +38,10 @@ vals_obj = c(0, 5, 8, 12, 25)
 # View(data_mon)
 data_mon$k <- NA
 data_mon$alpha_rec <- NA
+```
 
+plot
+```{r}
 for (sub_idx in 1:dim(data_mon)[1]) {
   vals <- as.numeric(data_mon[sub_idx, 37:40])
   vals <- c(0, vals)
@@ -45,7 +50,7 @@ for (sub_idx in 1:dim(data_mon)[1]) {
   alpha_rec <- coef(fit_model)[2]
   data_mon$k <- k
   data_mon$alpha_rec[sub_idx] <- alpha_rec
-  plot(vals_obj, vals, main = c(k, alpha_rec))
+  plot(vals_obj, vals, main = c(paste(as.character(data_mon$id[sub_idx]),'recover'), paste('k=', round(k,3), '; alpha=', round(alpha_rec,3))))
   lines(seq(0,25,0.1), k*seq(0,25,0.1)^alpha_rec)
 }
 
@@ -63,16 +68,198 @@ allfit <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
 
 fit_old <- allfit[allfit$model == 'ambigNrisk' & allfit$fitby == 'value', c(1,2)]
 
-View(fit_old)
+# View(fit_old)
 
 data_mon_new <- merge(data_mon, fit_old, by = "id")
+```
 
+plot
+```{r}
 plot(data_mon_new$alpha.y, data_mon_new$alpha_rec,
      xlab = "alpha, original model",
      ylab = "recovered alpha, new model")
+
+abline(a=0, b=1)
 ```
 
+plot SV of each outcome level fitted by new model, and calculated by alpha the old model
+```{r}
+vals_obj = c(5, 8, 12, 25)
+ncol(data_mon_new)
 
+data_mon_new$val1_old <- NaN
+data_mon_new$val2_old <- NaN
+data_mon_new$val3_old <- NaN
+data_mon_new$val4_old <- NaN
+
+ncol(data_mon_new)
+
+n_sub = dim(data_mon_new)[1]
+# n_sub = 3
+
+for (sub_idx in 1:n_sub) {
+  vals_old_model <- vals_obj ^ data_mon_new$alpha.y[sub_idx]
+  data_mon_new[sub_idx,99:102] <- vals_old_model
+  
+  vals_new_model <- c(0,data_mon_new$val1[sub_idx],data_mon_new$val2[sub_idx],data_mon_new$val3[sub_idx],data_mon_new$val4[sub_idx])
+  
+  vals_new_model_norm <- vals_new_model
+  # vals_new_model_norm <- (vals_new_model - vals_new_model[1])/vals_new_model[5]
+  vals_new_model_norm <- scale(vals_new_model_norm)
+  
+  vals_old_model <- c(0,data_mon_new$val1_old[sub_idx],data_mon_new$val2_old[sub_idx],data_mon_new$val3_old[sub_idx],data_mon_new$val4_old[sub_idx])
+  
+  vals_old_model_norm <- vals_old_model
+  # vals_old_model_norm <- (vals_old_model - vals_old_model[1])/vals_old_model[5]
+  vals_old_model_norm <- scale(vals_old_model_norm)
+  
+  sub.plot <- data.frame(id=data_mon_new$id[sub_idx],
+                         val_obj=c(0,5,8,12,25,0,5,8,12,25),
+                         model = c("new","new","new","new","new","old","old","old","old","old"),
+                         val_subj=c(0,data_mon_new$val1[sub_idx],data_mon_new$val2[sub_idx],data_mon_new$val3[sub_idx],data_mon_new$val4[sub_idx],0,data_mon_new$val1_old[sub_idx],data_mon_new$val2_old[sub_idx],data_mon_new$val3_old[sub_idx],data_mon_new$val4_old[sub_idx]),
+                         val_subj_norm <- c(vals_new_model_norm[1],vals_new_model_norm[2],vals_new_model_norm[3],vals_new_model_norm[4],vals_new_model_norm[5],vals_old_model_norm[1],vals_old_model_norm[2],vals_old_model_norm[3],vals_old_model_norm[4],vals_old_model_norm[5])
+                         )
+  # plot subjective values before normazlied
+  # f1 <- ggplot(sub.plot, aes(x=val_obj, y=val_subj, color=model)) +
+  #   geom_point(size=2) + geom_line(size = 1,alpha = 0.7) +
+  #   scale_color_viridis(discrete = TRUE, option = "A") +
+  #   theme(panel.background = element_rect(fill = "grey80")) +
+  #   ggtitle(paste(sub.plot$id[1], 'Model fitted subjective value'))
+  # 
+  # print(f1) 
+  
+  # plot subjective values after normalized
+  f2 <- ggplot(sub.plot, aes(x=val_obj, y=val_subj_norm, color=model)) +
+    geom_point(size=2) + geom_line(size = 1,alpha = 0.7) +
+    scale_color_viridis(discrete = TRUE, option = "A") +
+    theme(panel.background = element_rect(fill = "grey80")) +
+    ggtitle(paste(sub.plot$id[1], 'Model fitted subjective value normalized'))
+ 
+  print(f2)  
+}
+
+```
+
+Read data, Model fitting SV constrained 0-100
+```{r}
+path <- "E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
+setwd(path)
+load("data_all_05092020.rda") # value constrained between 0-50
+
+data <- data_all[data_all$is_exclude_behavior == 0, ]
+# data <- data_all
+data$beta_t <- -data$beta
+
+```
+
+recover alpha in the monetary domain
+```{r}
+# colnames(data)
+data_mon <- data[data$is_med == 0, ]
+vals_obj = c(0, 5, 8, 12, 25)
+# View(data_mon)
+data_mon$k <- NA
+data_mon$alpha_rec <- NA
+```
+
+plot
+```{r}
+for (sub_idx in 1:dim(data_mon)[1]) {
+  vals <- as.numeric(data_mon[sub_idx, 37:40])
+  vals <- c(0, vals)
+  fit_model <- nlsLM(vals ~ k*vals_obj^alpha, start = list(k = 1, alpha = 1), data = data.frame(vals, vals_obj))
+  k <- coef(fit_model)[1]
+  alpha_rec <- coef(fit_model)[2]
+  data_mon$k <- k
+  data_mon$alpha_rec[sub_idx] <- alpha_rec
+  plot(vals_obj, vals, main = c(paste(as.character(data_mon$id[sub_idx]),'recover'), paste('k=', round(k,3), '; alpha=', round(alpha_rec,3))))
+  lines(seq(0,25,0.1), k*seq(0,25,0.1)^alpha_rec)
+}
+
+```
+
+compare with alphas from the original model
+```{r}
+fitpar_path <- 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis'
+setwd(fitpar_path)
+
+# fit1 <- read.csv('par_09300219.csv', header = TRUE)
+allfit <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
+# log <- read.csv("log_11082019.csv", header = TRUE)
+
+fit_old <- allfit[allfit$model == 'ambigNrisk' & allfit$fitby == 'value', c(1,2)]
+
+# View(fit_old)
+
+data_mon_new <- merge(data_mon, fit_old, by = "id")
+```
+
+plot
+```{r}
+plot(data_mon_new$alpha.y, data_mon_new$alpha_rec,
+     xlab = "alpha, original model",
+     ylab = "recovered alpha, new model")
+
+abline(a=0, b=1)
+```
+
+plot SV of each outcome level fitted by new model, and calculated by alpha the old model
+```{r}
+vals_obj = c(5, 8, 12, 25)
+ncol(data_mon_new)
+
+data_mon_new$val1_old <- NaN
+data_mon_new$val2_old <- NaN
+data_mon_new$val3_old <- NaN
+data_mon_new$val4_old <- NaN
+
+ncol(data_mon_new)
+
+n_sub = dim(data_mon_new)[1]
+# n_sub = 3
+
+for (sub_idx in 1:n_sub) {
+  vals_old_model <- vals_obj ^ data_mon_new$alpha.y[sub_idx]
+  data_mon_new[sub_idx,99:102] <- vals_old_model
+  
+  vals_new_model <- c(0,data_mon_new$val1[sub_idx],data_mon_new$val2[sub_idx],data_mon_new$val3[sub_idx],data_mon_new$val4[sub_idx])
+  
+  vals_new_model_norm <- vals_new_model
+  # vals_new_model_norm <- (vals_new_model - vals_new_model[1])/vals_new_model[5]
+  vals_new_model_norm <- scale(vals_new_model_norm)
+  
+  vals_old_model <- c(0,data_mon_new$val1_old[sub_idx],data_mon_new$val2_old[sub_idx],data_mon_new$val3_old[sub_idx],data_mon_new$val4_old[sub_idx])
+  
+  vals_old_model_norm <- vals_old_model
+  # vals_old_model_norm <- (vals_old_model - vals_old_model[1])/vals_old_model[5]
+  vals_old_model_norm <- scale(vals_old_model_norm)
+  
+  sub.plot <- data.frame(id=data_mon_new$id[sub_idx],
+                         val_obj=c(0,5,8,12,25,0,5,8,12,25),
+                         model = c("new","new","new","new","new","old","old","old","old","old"),
+                         val_subj=c(0,data_mon_new$val1[sub_idx],data_mon_new$val2[sub_idx],data_mon_new$val3[sub_idx],data_mon_new$val4[sub_idx],0,data_mon_new$val1_old[sub_idx],data_mon_new$val2_old[sub_idx],data_mon_new$val3_old[sub_idx],data_mon_new$val4_old[sub_idx]),
+                         val_subj_norm <- c(vals_new_model_norm[1],vals_new_model_norm[2],vals_new_model_norm[3],vals_new_model_norm[4],vals_new_model_norm[5],vals_old_model_norm[1],vals_old_model_norm[2],vals_old_model_norm[3],vals_old_model_norm[4],vals_old_model_norm[5])
+                         )
+  # plot subjective values before normazlied
+  # f1 <- ggplot(sub.plot, aes(x=val_obj, y=val_subj, color=model)) +
+  #   geom_point(size=2) + geom_line(size = 1,alpha = 0.7) +
+  #   scale_color_viridis(discrete = TRUE, option = "A") +
+  #   theme(panel.background = element_rect(fill = "grey80")) +
+  #   ggtitle(paste(sub.plot$id[1], 'Model fitted subjective value'))
+  # 
+  # print(f1) 
+  
+  # plot subjective values after normalized
+  f2 <- ggplot(sub.plot, aes(x=val_obj, y=val_subj_norm, color=model)) +
+    geom_point(size=2) + geom_line(size = 1,alpha = 0.7) +
+    scale_color_viridis(discrete = TRUE, option = "A") +
+    theme(panel.background = element_rect(fill = "grey80")) +
+    ggtitle(paste(sub.plot$id[1], 'Model fitted subjective value normalized'))
+ 
+  print(f2)  
+}
+
+```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

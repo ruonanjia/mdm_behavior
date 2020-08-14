@@ -1,0 +1,68 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+```
+
+
+```{r}
+library(ggplot2)
+```
+
+Read data
+```{r}
+path <- "E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
+setwd(path)
+
+load("data_all_01272020.rda") # value constrained between 0-50
+data_50 <- data_all[data_all$is_exclude_behavior == 0 & data_all$is_med==0, ]
+# data <- data_all]
+data_50$beta_t <- -data_50$beta
+
+load("data_all_05142020.rda") # value constrained between 0-100
+data_100 <- data_all[data_all$is_exclude_behavior == 0 & data_all$is_med==0, ]
+# data <- data_all
+data_100$beta_t <- -data_100$beta
+
+load("data_all_05222020.rda") # value constrained between 0-100, grid search
+data_100_grid <- data_all[data_all$is_exclude_behavior == 0 & data_all$is_med==0, ]
+# data <- data_all
+data_100_grid$beta_t <- -data_100_grid$beta
+
+```
+
+
+check value fitted by differet constraints
+```{r}
+for (sub_idx in 1:sum(data_50$is_med==0)) {
+  sub_id <- data_50$id[sub_idx]
+  # val_50 <- c(data_50$val1[sub_idx], data_50$val2[sub_idx], data_50$val3[sub_idx], data_50$val4[sub_idx])
+  # val_100 <- c(data_100_grid$val1[sub_idx], data_100_grid$val2[sub_idx], data_100_grid$val3[sub_idx], data_100_grid$val4[sub_idx])
+  # 
+  # plot(val_50, val_100, main = sub_id)
+  
+  val_100 <- c(data_100$val1[sub_idx], data_100$val2[sub_idx], data_100$val3[sub_idx], data_100$val4[sub_idx])
+  val_100_grid <- c(data_100_grid$val1[sub_idx], data_100_grid$val2[sub_idx], data_100_grid$val3[sub_idx], data_100_grid$val4[sub_idx])
+  
+  plot(val_100, val_100_grid, main = sub_id)  
+  
+  # val <- data.frame(val_50, val_100)
+  # 
+  # f <- ggplot(val, aes(x=val_50, y=val_100)) +
+  #   geom_point() +
+  #   scale_x_continuous(limits = c(0,50)) +
+  #   scale_y_continuous(limits = c(0, 100)) +
+  #   ggtitle(sub_id)
+  # 
+  # print(f)
+}
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

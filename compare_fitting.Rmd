@@ -44,7 +44,7 @@ fitpar_path <- 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Makin
 setwd(fitpar_path)
 
 fit1 <- read.csv('par_09300219.csv', header = TRUE)
-fit2 <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
+fit <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
 log <- read.csv("log_11082019.csv", header = TRUE)
 
 ```
@@ -52,8 +52,12 @@ log <- read.csv("log_11082019.csv", header = TRUE)
 
 Clean data sheet
 ```{r}
-fit2 = fit2[fit2$model == 'ambigNrisk' & fit2$fitby == 'rating', ]
+View(fit1)
+View(fit)
 
+fit2 = fit[fit$model == 'ambigNrisk' & fit$fitby == 'rating', ]
+fit3 = fit[fit$model == 'ambigNrisk' & fit$fitby == 'arbitrary', ]
+fit4 = fit[fit$model== 'ambigNrisk' & fit$fitby == 'value', ]
 # included subjects
 ids = unique(log$id[log$is_exclude_behavior == 0])
 
@@ -64,54 +68,72 @@ combine table
 ```{r}
 names(fit1)
 names(fit2)
+names(fit3)
 
-fit_new = fit1 %>% select((id),(is_med),(alpha),(beta),(gamma),(val1), (val2), (val3), (val4), (LL),(AIC),(BIC),(model))
+fit_1 = fit1 %>% select((id),(is_med),(alpha),(beta),(gamma),(val1), (val2), (val3), (val4), (LL),(AIC),(BIC),(model))
 
-fit_old = fit2 %>% select((id),(is_med),(alpha),(beta),(gamma),(LL),(AIC),(BIC),(model))
-fit_old$val1 <- NaN
-fit_old$val2 <- NaN
-fit_old$val3 <- NaN
-fit_old$val4 <- NaN
-# fit_old = fit_old %>% rename(alpha2=alpha, beta2=beta, gamma2 = gamma)
+fit_2 = fit2 %>% select((id),(is_med),(alpha),(beta),(gamma),(LL),(AIC),(BIC),(model))
+fit_2$val1 <- NaN
+fit_2$val2 <- NaN
+fit_2$val3 <- NaN
+fit_2$val4 <- NaN
+fit_2$model <- "ambigNrisk_rating"
+# fit_2 = fit_2 %>% rename(alpha2=alpha, beta2=beta, gamma2 = gamma)
 
-fit_all <- merge(fit_new, fit_old, by = intersect(names(fit_new), names(fit_old)))
+fit_3 = fit3 %>% select((id),(is_med),(alpha),(beta),(gamma),(LL),(AIC),(BIC),(model))
+fit_3$val1 <- NaN
+fit_3$val2 <- NaN
+fit_3$val3 <- NaN
+fit_3$val4 <- NaN
+fit_3$model <- "ambigNrisk_arbitrary"
 
-fit_all <- rbind(fit_new, fit_old)
+fit_4 = fit4 %>% select((id),(is_med),(alpha),(beta),(gamma),(LL),(AIC),(BIC),(model))
+fit_4$val1 <- NaN
+fit_4$val2 <- NaN
+fit_4$val3 <- NaN
+fit_4$val4 <- NaN
+fit_4$model <- "ambigNrisk_value"
+
+# fit_3 = fit_3 %>% rename(alpha2=alpha, beta2=beta, gamma2 = gamma)
+
+fit_all <- rbind(fit_1, fit_2, fit_3, fit_4)
 fit_all$id <- as.factor(fit_all$id)
 fit_all$is_med <- as.factor(fit_all$is_med)
 fit_all$model <- as.factor(fit_all$model)
 
 names(fit_all)
 
-write.csv(fit_all, 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis/compare_model_fitting.csv')
+# write.csv(fit_all, 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis/compare_model_fitting.csv')
 ```
 
 
 plot
 ```{r}
-fit_plot <- data_summary(fit_all, varname = "BIC", groupnames=c("is_med", "model"))
+fit_plot <- data_summary(fit_all[fit_all$model != "ambigNrisk_value",], varname = "BIC", groupnames=c("is_med", "model"))
 
 ggplot(data = fit_plot, aes(x = is_med, y = BIC, fill = model)) +
   geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
   geom_errorbar(aes(ymin=BIC-sd, ymax=BIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
-  # scale_fill_manual(limits = c(1,0), values = c( 'darkorange3', 'olivedrab'), labels = c('Medical', 'Monetary')) +
+  # scale_fill_manual() +
   theme_classic() +
   ggtitle('Compare model fitting') +
   theme(axis.line = element_line(size = 1)) +
   theme(axis.ticks = element_line(size = 1, color = "black")) +
   theme(axis.text = element_text(size = 12, color = "black"))
 
-fit_plot <- data_summary(fit_all, varname = "AIC", groupnames=c("is_med", "model"))
+fit_plot <- data_summary(fit_all[fit_all$model != "ambigNrisk_value",], varname = "AIC", groupnames=c("is_med", "model"))
 
 ggplot(data = fit_plot, aes(x = is_med, y = AIC, fill = model)) +
   geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
   geom_errorbar(aes(ymin=AIC-sd, ymax=AIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
-  # scale_fill_manual(limits = c(1,0), values = c( 'darkorange3', 'olivedrab'), labels = c('Medical', 'Monetary')) +
+  # scale_fill_viridis(discrete = TRUE)+
+  scale_x_discrete("is_med", limits = c("1","0"), labels = c("Medical", "Monetary")) +
   theme_classic() +
   ggtitle('Compare model fitting') +
   theme(axis.line = element_line(size = 1)) +
   theme(axis.ticks = element_line(size = 1, color = "black")) +
   theme(axis.text = element_text(size = 12, color = "black"))
+
 
 fit_plot <- data_summary(fit_all, varname = "LL", groupnames=c("is_med", "model"))
 
@@ -125,10 +147,78 @@ ggplot(data = fit_plot, aes(x = is_med, y = LL, fill = model)) +
   theme(axis.ticks = element_line(size = 1, color = "black")) +
   theme(axis.text = element_text(size = 12, color = "black"))
 
+
+
+```
+
+compare models with monetary fitting only
+```{r}
+fit_plot <- data_summary(fit_all[fit_all$is_med == 0 & (fit_all$model == "ambigNrisk_value" | fit_all$model == "ambigSVPar") ,], varname = "BIC", groupnames=c("model"))
+
+ggplot(data = fit_plot, aes(x = model, y = BIC, fill = model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=BIC-sd, ymax=BIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Compare model fitting') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+fit_plot <- data_summary(fit_all[fit_all$is_med == 0 & (fit_all$model == "ambigNrisk_value" | fit_all$model == "ambigSVPar") ,], varname = "AIC", groupnames=c("model"))
+
+ggplot(data = fit_plot, aes(x = model, y = AIC, fill = model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=AIC-sd, ymax=AIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Compare model fitting') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
 ```
 
 
+Compare model stats
+```{r}
+# make sure id pairing
+plot(as.numeric(fit_all$id[fit_all$is_med == 0 & fit_all$model == "ambigSVPar"]),
+     as.numeric(fit_all$id[fit_all$is_med == 0 & fit_all$model == "ambigNrisk_rating"]))
 
+plot(as.numeric(fit_all$id[fit_all$is_med == 0 & fit_all$model == "ambigSVPar"]),
+     as.numeric(fit_all$id[fit_all$is_med == 0 & fit_all$model == "ambigNrisk_arbitrary"]))
+
+# stats:
+test1 <- t.test(fit_all$AIC[fit_all$is_med == 1 & fit_all$model == "ambigSVPar"],
+       fit_all$AIC[fit_all$is_med == 1 & fit_all$model == "ambigNrisk_rating"],
+       paired = TRUE)
+
+test2 <- t.test(fit_all$AIC[fit_all$is_med == 1 & fit_all$model == "ambigSVPar"],
+       fit_all$AIC[fit_all$is_med == 1 & fit_all$model == "ambigNrisk_arbitrary"],
+       paired = TRUE)
+
+test3 <- t.test(fit_all$AIC[fit_all$is_med == 1 & fit_all$model == "ambigNrisk_rating"],
+       fit_all$AIC[fit_all$is_med == 1 & fit_all$model == "ambigNrisk_arbitrary"],
+       paired = TRUE)
+
+p.adjust(c(test1$p.value, test2$p.value, test3$p.value), method = "fdr")
+
+# monetary
+test1 <- t.test(fit_all$AIC[fit_all$is_med == 0 & fit_all$model == "ambigSVPar"],
+       fit_all$AIC[fit_all$is_med == 0 & fit_all$model == "ambigNrisk_rating"],
+       paired = TRUE)
+
+test2 <- t.test(fit_all$AIC[fit_all$is_med == 0 & fit_all$model == "ambigSVPar"],
+       fit_all$AIC[fit_all$is_med == 0 & fit_all$model == "ambigNrisk_arbitrary"],
+       paired = TRUE)
+
+test3 <- t.test(fit_all$AIC[fit_all$is_med == 0 & fit_all$model == "ambigNrisk_rating"],
+       fit_all$AIC[fit_all$is_med == 0 & fit_all$model == "ambigNrisk_arbitrary"],
+       paired = TRUE)
+
+p.adjust(c(test1$p.value, test2$p.value, test3$p.value), method = "fdr")
+```
 
 
 

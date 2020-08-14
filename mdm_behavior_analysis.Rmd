@@ -17,42 +17,11 @@ library(viridis)
 library(lme4)
 # install.packages("rlang")
 # library(rlang)
+library(ez)
+library(PerformanceAnalytics)
 ```
 
-Load data
-```{r}
-path <- "D:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
-setwd(path)
-
-load("data_all_11132019.rda")
-```
-
-Exclude participants
-```{r}
-data <- data_all[data_all$is_exclude_behavior == 0, ]
-# data <- data_all
-data$beta_t <- -data$beta
-data_med <- data[data$is_med == 1, ] 
-data_mon <- data[data$is_med == 0, ] 
-# check if id order matches
-plot(as.numeric(data_med$id), as.numeric(data_mon$id))
-
-colnames(data_med)
-colnames(data_med) <- c("id", "is_med", "is_exclude_technical", "is_exclude_behavior", "is_exclude_imaging", "date_scan", "data_birth", "age_day", "age_year", "is_male", "cond", "is_exist_resting", "is_exist_imaging", "reason_exclude", "r25_med", "r50_med", "r75_med", "r_med", "a24_med", "a50_med", "a74_med", "a_med", "a24_r50_med", "a50_r50_med", "a74_r50_med", "a_r50_med", "ar_med", "error_med", "rating0_med", "rating1_med", "rating2_med", "rating3_med", "rating4_med", "alpha_med", "beta_med", "gamma_med", "val1_med", "val2_med","val3_med", "val4_med", "LL_med", "r2_adj_med", "AIC_med", "BIC_med", "model_med", "exitFlag_med", "optimizer_med", "beta_t_med")
-
-data_med <- within(data_med, rm("is_med"))
-
-colnames(data_mon) <- c("id", "is_med", "is_exclude_technical", "is_exclude_behavior", "is_exclude_imaging", "date_scan", "data_birth", "age_day", "age_year", "is_male", "cond", "is_exist_resting", "is_exist_imaging", "reason_exclude", "r25_mon", "r50_mon", "r75_mon", "r_mon", "a24_mon", "a50_mon", "a74_mon", "a_mon", "a24_r50_mon", "a50_r50_mon", "a74_r50_mon", "a_r50_mon", "ar_mon", "error_mon", "rating0_mon", "rating1_mon", "rating2_mon", "rating3_mon", "rating4_mon", "alpha_mon", "beta_mon", "gamma_mon", "val1_mon", "val2_mon","val3_mon", "val4_mon", "LL_mon", "r2_adj_mon", "AIC_mon", "BIC_mon", "model_mon", "exitFlag_mon", "optimizer_mon", "beta_t_mon")
-
-data_mon <- within(data_mon, rm("is_med"));
-
-data_medmon <- merge(data_med, data_mon, by = intersect(colnames(data_med), colnames(data_mon)))
-```
-
-```{r}
-sum(data$is_med == 1)
-```
-Group average of attitudes
+Functions
 ```{r}
 # functions
 data_summary <- function(data, varname, groupnames){
@@ -93,21 +62,494 @@ data_meanse <- function(x) {
 }
 ```
 
+
+Load data
+```{r}
+path <- "E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
+setwd(path)
+load("data_all_01272020.rda")
+
+data <- data_all[data_all$is_exclude_behavior == 0, ]
+# data <- data_all
+data$beta_t <- -data$beta
+```
+
+Separate medical and monetary
+```{r}
+data_med <- data[data$is_med == 1, ] 
+data_mon <- data[data$is_med == 0, ] 
+# check if id order matches
+plot(as.numeric(data_med$id), as.numeric(data_mon$id))
+
+colnames(data_med)
+colnames(data_med) <- c("id", "is_med", "is_exclude_technical", "is_exclude_behavior", "is_exclude_imaging", "date_scan", "data_birth", "age_day", "age_year", "is_male", "cond", "is_exist_resting", "is_exist_imaging", "reason_exclude", "r25_med", "r50_med", "r75_med", "r_med", "a24_med", "a50_med", "a74_med", "a_med", "a24_r50_med", "a50_r50_med", "a74_r50_med", "a_r50_med", "ar_med", "error_med", "rating0_med", "rating1_med", "rating2_med", "rating3_med", "rating4_med", "alpha_med", "beta_med", "gamma_med", "val1_med", "val2_med","val3_med", "val4_med", "LL_med", "r2_adj_med", "AIC_med", "BIC_med", "model_med", "exitFlag_med", "optimizer_med", "estimate_24_1_med", "estimate_50_1_med", "estimate_74_1_med", "estimate_24_2_med", "estimate_50_2_med", "estimate_74_2_med", "estimate_24_3_med", "estimate_50_3_med", "estimate_74_3_med", "estimate_24_4_med", "estimate_50_4_med", "estimate_74_4_med", "understand_description_med", "choice_difficulty_med", "memorize_graph_med", "memorize_text_med", "link_graph_text_med", "estimate_ambig_med", "treatment_med", "beta_t_med")
+
+data_med <- within(data_med, rm("is_med"))
+
+colnames(data_mon) <- c("id", "is_med", "is_exclude_technical", "is_exclude_behavior", "is_exclude_imaging", "date_scan", "data_birth", "age_day", "age_year", "is_male", "cond", "is_exist_resting", "is_exist_imaging", "reason_exclude", "r25_mon", "r50_mon", "r75_mon", "r_mon", "a24_mon", "a50_mon", "a74_mon", "a_mon", "a24_r50_mon", "a50_r50_mon", "a74_r50_mon", "a_r50_mon", "ar_mon", "error_mon", "rating0_mon", "rating1_mon", "rating2_mon", "rating3_mon", "rating4_mon", "alpha_mon", "beta_mon", "gamma_mon", "val1_mon", "val2_mon","val3_mon", "val4_mon", "LL_mon", "r2_adj_mon", "AIC_mon", "BIC_mon", "model_mon", "exitFlag_mon", "optimizer_mon", "estimate_24_1_mon", "estimate_50_1_mon", "estimate_74_1_mon", "estimate_24_2_mon", "estimate_50_2_mon", "estimate_74_2_mon", "estimate_24_3_mon", "estimate_50_3_mon", "estimate_74_3_mon", "estimate_24_4_mon", "estimate_50_4_mon", "estimate_74_4_mon", "understand_description_mon", "choice_difficulty_mon", "memorize_graph_mon", "memorize_text_mon", "link_graph_text_mon", "estimate_ambig_mon", "treatment_mon", "beta_t_mon")
+
+data_mon <- within(data_mon, rm("is_med"));
+
+data_medmon <- merge(data_med, data_mon, by = intersect(colnames(data_med), colnames(data_mon)))
+```
+
+descriptive statistics
+```{r}
+sum(data$is_med == 1)
+names(data)
+
+describe(data[data$is_med == 1, ])
+describeBy(data[data$is_med == 1, ], group = data[data$is_med == 1, ]$is_male)
+
+describe(data[data$is_med == 1 & data$is_exclude_imaging == 0, ])
+describeBy(data[data$is_med == 1 & data$is_exclude_imaging == 0, ], group = data[data$is_med == 1 & data$is_exclude_imaging == 0, ]$is_male)
+
+```
+
+Behavioral and questionnare
+```{r}
+names(data)
+
+# Medical 
+# bisbas
+chart.Correlation(data[data$is_med == 1 & data$id != 2588, 
+                       c(18, 22, 95, 67:70)])
+
+# bis11
+chart.Correlation(data[data$is_med == 1 & data$id != 2588, 
+                       c(18, 22, 95, 71:76)])
+
+# Dospert Rt
+chart.Correlation(data[data$is_med == 1 & data$id != 2588, 
+                       c(18, 22, 95, 77:82)])
+
+# Dospert Rp
+chart.Correlation(data[data$is_med == 1 & data$id != 2588, 
+                       c(18, 22, 95, 83:88)])
+
+
+# Monetary
+# bisbas
+chart.Correlation(data[data$is_med == 0 & data$id != 2656, 
+                       c(18, 22, 95, 67:70)])
+
+# bis11
+chart.Correlation(data[data$is_med == 0 & data$id != 2656, 
+                       c(18, 22, 95, 71:76)])
+
+# Dospert Rt
+chart.Correlation(data[data$is_med == 0 & data$id != 2656, 
+                       c(18, 22, 95, 77:82)])
+
+# Dospert Rp
+chart.Correlation(data[data$is_med == 0 & data$id != 2656, 
+                       c(18, 22, 95, 83:88)])
+```
+
+
+
+plot post-scan estimate ambiguity level
+```{r}
+# reorganize sheet
+idx = 1
+for (amb_level in c("24", "50", "74")) {
+  
+  for (out_level in c("1", "2", "3", "4")) {
+    estimate_single = data %>% select((id:is_med), contains(paste("estimate_", amb_level, "_", out_level, sep = "")))
+    estimate_single$out_level = as.numeric(out_level)
+    estimate_single$amb_level = as.numeric(amb_level)
+    names(estimate_single)[3] = "estimate_amb" 
+    
+    # estimate_mon = data[data$is_med == 0,] %>% select((id), eval(parse(paste("estimate_", amb_level, "_", out_level, sep = ""))))
+    # estimate_mon$out_level = as.numeric(out_level)
+    # estimate_mon$amb_level = as.numeric(amb_level)
+    
+    if (idx == 1) {
+      estimate = estimate_single
+    } else {
+      estimate = rbind(estimate, estimate_single)
+    }
+    
+    idx = idx + 1
+  }
+  
+}
+
+estimate$out_level = as.factor(estimate$out_level)
+estimate$amb_level = as.factor(estimate$amb_level)
+
+```
+
+
+Two participants with high ambiguity aversion
+```{r}
+data$id[data$is_med == 1 & data$beta_t < -1.8]
+data$id[data$is_med == 0 & data$beta_t < -5]
+
+```
+
+
+Plot by ambiguity level and outcome level
+```{r}
+# if want to exclude participants
+names(estimate)
+#delete the rows of 2588 medical, and 2656 monetary
+estimate = estimate[!(estimate$id == 2588 & estimate$is_med == 1),]
+estimate = estimate[!(estimate$id == 2656 & estimate$is_med == 0),]
+
+is_med = 0
+estimate_plot = estimate[estimate$is_med == is_med, ]
+
+tb2plot = data_summary(estimate_plot, varname = "estimate_amb", groupnames = c("amb_level", "out_level"))
+
+ggplot(data = tb2plot, aes(x = amb_level, y = estimate_amb, fill = out_level)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=estimate_amb-sd, ymax=estimate_amb+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_gradient2(low = "blue", high = "red") +
+  # scale_fill_viridis(discrete = TRUE) + 
+  # scale_fill_brewer(palette = "Greens") +
+  scale_fill_brewer(palette = "Greens") +
+  # scale_fill_viridis(discrete = TRUE, option="D") + 
+  geom_hline(yintercept = 50, linetype= "dashed") +
+  theme_classic() +
+  ggtitle('Estimation of outcome probability') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+
+```
+
+
+Correlation between estimate of probability and ambiguity attitude
+```{r}
+names(data)[48:59]
+
+data$estimate = rowMeans(data[,48:59], na.rm = TRUE)
+
+data$estimate_24 = rowMeans(data[,c(48,51,54,57)], na.rm = TRUE)
+data$estimate_50 = rowMeans(data[,c(49,52,55,58)], na.rm = TRUE)
+data$estimate_74 = rowMeans(data[,c(50,53,56,59)], na.rm = TRUE)
+
+is_med =0
+ggplot(data[data$is_med == is_med & data$id != 2656, ], aes(x=beta_t, y=estimate)) +
+  geom_point(size = 4, color = "olivedrab") +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "olivedrab") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle("Correlation between ambiguity attitude and estimate") + xlab("mb amb mon") + ylab("estimate") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+print(corr.test(x=data[data$is_med == is_med & data$beta_t>-4, ]$beta_t,
+                y=data[data$is_med == is_med & data$beta_t>-4, ]$estimate,
+                method = "pearson",
+                adjust = "none",
+                alpha=.05), 
+      digits = 4)
+
+data[data$is_med == is_med & data$beta_t < -4, ]$id
+
+is_med = 1
+ggplot(data[data$is_med == is_med & data$id != 2588, ], aes(x=beta_t, y=estimate)) +
+  geom_point(size = 4, color = "darkorange3") +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "darkorange3") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle("Correlation between ambiguity attitude and estimate") + xlab("mb amb med") + ylab("estimate") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+print(corr.test(x=data[data$is_med == is_med & data$beta_t>-1.5, ]$beta_t,
+                y=data[data$is_med == is_med & data$beta_t>-1.5, ]$estimate,
+                method = "pearson",
+                adjust = "none",
+                alpha=.05), 
+      digits = 4)
+
+```
+
+
+
+Calculate model-fitted estimate of ambiguity level
+```{r}
+amb_levels = c(24, 50, 74)
+
+model_amb_estimate <- function(beta, amb_levels){
+  # Function to model-based estimation of outcome probability of ambiguous trials
+  
+  estimate = (50 - beta * amb_levels/2)
+  
+  return(estimate)
+}
+
+# test
+# model_amb_estimate(1, 50)
+
+estimate_model = data.frame(id = integer(), is_med = integer(), estimate_model = double(), amb_level = integer())
+
+for (id in unique(data$id)) {
+  
+  
+  beta_mon = data$beta[data$id == id & data$is_med == 0]
+  beta_med = data$beta[data$id == id & data$is_med == 1]
+  
+  for (amb_level in amb_levels) {
+    
+    estimate_mon = model_amb_estimate(beta_mon, amb_level)
+    estimate_med = model_amb_estimate(beta_med, amb_level)
+    
+    estimate_model[nrow(estimate_model)+1, ] = list(id, 0, estimate_mon, amb_level)
+    estimate_model[nrow(estimate_model)+1, ] = list(id, 1, estimate_med, amb_level)
+  } 
+}
+
+estimate_model$is_med = as.factor(estimate_model$is_med)
+estimate_model$amb_level = as.factor(estimate_model$amb_level)
+
+# plot
+is_med = 1
+estimate_plot = estimate_model[estimate_model$is_med == is_med & estimate_model$id != 2588, ]
+tb2plot = data_summary(estimate_plot, varname = "estimate_model", groupnames = "amb_level")
+
+ggplot(data = tb2plot, aes(x = amb_level, y = estimate_model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8, fill = "darkorange3") +
+  geom_errorbar(aes(ymin=estimate_model-sd, ymax=estimate_model+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  geom_hline(yintercept = 50, linetype= "dashed") +
+  theme_classic() +
+  ggtitle('Model estimation of outcome probability') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+is_med = 0
+estimate_plot = estimate_model[estimate_model$is_med == is_med & estimate_model$id != 2656, ]
+tb2plot = data_summary(estimate_plot, varname = "estimate_model", groupnames = "amb_level")
+
+ggplot(data = tb2plot, aes(x = amb_level, y = estimate_model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8, fill = "olivedrab") +
+  geom_errorbar(aes(ymin=estimate_model-sd, ymax=estimate_model+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  geom_hline(yintercept = 50, linetype= "dashed") +
+  theme_classic() +
+  ggtitle('Model estimation of outcome probability') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+
+```
+
+Plot correlation between subjective estimation of probability and model-fitted estimation of probability of each ambiguity level
+```{r}
+names(data)
+nrow(data)
+
+# reorganize
+data_estimate = data[, c(1,2,4,5,68:71)]
+names(data_estimate)
+
+colnames(data_estimate)[5] <- "estimate_all"
+colnames(data_estimate)
+
+df_24 = data_estimate[,c(1:5,6)]
+colnames(df_24)[6] = "estimate"
+df_24$amb_level = 24
+
+df_50 = data_estimate[,c(1:5,7)]
+colnames(df_50)[6] = "estimate"
+df_50$amb_level = 50
+
+df_74 = data_estimate[,c(1:5,8)]
+colnames(df_74)[6] = "estimate"
+df_74$amb_level = 74
+
+estimate_subjective = rbind(df_24,df_50,df_74)
+
+compare_estimate = merge(estimate_subjective, estimate_model, by = intersect(names(estimate_subjective), names(estimate_model)))
+
+compare_estimate$id = as.factor(compare_estimate$id)
+compare_estimate$is_med = as.factor(compare_estimate$is_med)
+compare_estimate$amb_level = as.factor(compare_estimate$amb_level)
+
+#plot medical
+is_med = 1
+amb_level = 74
+
+low = 0
+up =85
+incre = 25
+
+ggplot(compare_estimate[compare_estimate$is_med == is_med & compare_estimate$amb_level == amb_level & compare_estimate$is_exclude_behavior == 0 & compare_estimate$id != 2588, ], aes(x=estimate, y=estimate_model)) +
+  geom_point(size = 1, color = "darkorange3") +
+  # geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "darkorange3") +
+  geom_abline(intercept = 0, slope = 1, color="black", 
+                 linetype="dotted", size=1) +
+  scale_x_continuous(limits=c(low, up), breaks = seq(low,up,incre)) +
+  scale_y_continuous(limits=c(low, up), breaks = seq(low,up,incre))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle("Correlation of probability estimation") + xlab("Subjective estimation") + ylab("Model estimateion") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+print(corr.test(x=data[data$is_med == is_med, ]$beta_t,
+                y=data[data$is_med == is_med, ]$estimate,
+                method = "spearman",
+                adjust = "none",
+                alpha=.05), 
+      digits = 4)
+
+
+# plot monetary
+is_med = 0
+amb_level = 74
+
+low = -10
+up =75
+incre = 25
+
+# max(compare_estimate$estimate[compare_estimate$is_med == is_med & compare_estimate$amb_level == amb_level & compare_estimate$is_exclude_behavior == 0 & compare_estimate$id != 2656])
+
+ggplot(compare_estimate[compare_estimate$is_med == is_med & compare_estimate$amb_level == amb_level & compare_estimate$is_exclude_behavior == 0 & compare_estimate$id != 2656, ], aes(x=estimate, y=estimate_model)) +
+  geom_point(size = 1, color = "olivedrab") +
+  # geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "darkorange3") +
+  geom_abline(intercept = 0, slope = 1, color="black", 
+                 linetype="dotted", size=1) +
+  scale_x_continuous(limits=c(low, up), breaks = seq(low,up,incre)) +
+  scale_y_continuous(limits=c(low, up), breaks = seq(low,up,incre))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle("Correlation of probability estimation") + xlab("Subjective estimation") + ylab("Model estimateion") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+```
+
+
+Plot choice prob by outcome level
+```{r}
+path <- "E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis"
+setwd(path)
+choice_prob <- read.csv("chocie_prob_byoutcome_012220.csv", header = TRUE)
+log <- read.csv("log_11082019.csv", header = TRUE)
+
+choice <- merge(choice_prob, log, by = "id")
+
+View(choice)
+
+choice = choice[choice$is_exclude_behavior == 0, ]
+
+names(choice)
+
+choice_1 <- choice[, c(1, 2, 3, 7)]
+names(choice_1)[3] <- "r"
+names(choice_1)[4] <- "a"
+choice_1$outcome_level <- 1
+
+choice_2 <- choice[, c(1, 2, 4, 8)]
+names(choice_2)[3] <- "r"
+names(choice_2)[4] <- "a"
+choice_2$outcome_level <- 2
+
+choice_3 <- choice[, c(1, 2, 5, 9)]
+names(choice_3)[3] <- "r"
+names(choice_3)[4] <- "a"
+choice_3$outcome_level <- 3
+
+choice_4 <- choice[, c(1, 2, 6, 10)]
+names(choice_4)[3] <- "r"
+names(choice_4)[4] <- "a"
+choice_4$outcome_level <- 4
+
+choice_all <- rbind(choice_1, choice_2, choice_3, choice_4)
+View(choice_all)
+
+choice_all$is_med <- as.factor(choice_all$is_med)
+choice_all$outcome_level <- as.factor(choice_all$outcome_level)
+
+# plot
+choice_plot <- data_summary(choice_all[choice_all$is_med == 1,], varname = "r", groupnames = c("outcome_level", "is_med"))
+ggplot(data = choice_plot, aes(x = outcome_level, y = r, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=r-sd, ymax = r+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c( 'darkorange3'), labels = c('Medical')) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.25)) +
+  theme_classic() +
+  ggtitle('Choice proportion in risky trials, Medical') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+choice_plot <- data_summary(choice_all[choice_all$is_med == 1,], varname = "a", groupnames = c("outcome_level", "is_med"))
+ggplot(data = choice_plot, aes(x = outcome_level, y = a, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=a-sd, ymax = a+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c( 'darkorange3'), labels = c('Medical')) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.25)) +
+  theme_classic() +
+  ggtitle('Choice proportion in ambiguous trials, Medical') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+choice_plot <- data_summary(choice_all[choice_all$is_med == 0,], varname = "r", groupnames = c("outcome_level", "is_med"))
+ggplot(data = choice_plot, aes(x = outcome_level, y = r, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=r-sd, ymax = r+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c( 'olivedrab'), labels = c('Monetary')) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.25)) +
+  theme_classic() +
+  ggtitle('Choice proportion in risky trials, Monetary') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+choice_plot <- data_summary(choice_all[choice_all$is_med == 0,], varname = "a", groupnames = c("outcome_level", "is_med"))
+ggplot(data = choice_plot, aes(x = outcome_level, y = a, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=a-sd, ymax = a+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c( 'olivedrab'), labels = c('Monetary')) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.25)) +
+  theme_classic() +
+  ggtitle('Choice proportion in ambiguous trials, Monetary') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+```
+
+
+
 Plot model-free attitude group average
 ```{r}
-# names(data)
+names(data)
 
 # reorganize
 # risk
-data_mfr_25 = data %>% select((id:is_exclude_imaging), (r25))
+data_mfr_25 = data %>% select((id:is_male), (r25))
 data_mfr_25$r_level= 25
 data_mfr_25 = data_mfr_25 %>% rename(mf_r=r25)
 
-data_mfr_50 = data %>% select((id:is_exclude_imaging), (r50))
+data_mfr_50 = data %>% select((id:is_male), (r50))
 data_mfr_50$r_level= 50
 data_mfr_50 = data_mfr_50 %>% rename(mf_r=r50)
 
-data_mfr_75 = data %>% select((id:is_exclude_imaging), (r75))
+data_mfr_75 = data %>% select((id:is_male), (r75))
 data_mfr_75$r_level= 75
 data_mfr_75 = data_mfr_75 %>% rename(mf_r=r75)
 
@@ -116,15 +558,15 @@ data_mfr = rbind(data_mfr_25, data_mfr_50, data_mfr_75)
 data_mfr$r_level = as.factor(data_mfr$r_level)
 
 # ambiguity
-data_mfa_r50_24 = data %>% select((id:is_exclude_imaging), (a24_r50))
+data_mfa_r50_24 = data %>% select((id:is_male), (a24_r50))
 data_mfa_r50_24$a_level= 24
 data_mfa_r50_24 = data_mfa_r50_24 %>% rename(mf_a=a24_r50)
 
-data_mfa_r50_50 = data %>% select((id:is_exclude_imaging), (a50_r50))
+data_mfa_r50_50 = data %>% select((id:is_male), (a50_r50))
 data_mfa_r50_50$a_level= 50
 data_mfa_r50_50 = data_mfa_r50_50 %>% rename(mf_a=a50_r50)
 
-data_mfa_r50_74 = data %>% select((id:is_exclude_imaging), (a74_r50))
+data_mfa_r50_74 = data %>% select((id:is_male), (a74_r50))
 data_mfa_r50_74$a_level= 74
 data_mfa_r50_74 = data_mfa_r50_74 %>% rename(mf_a=a74_r50)
 
@@ -202,17 +644,172 @@ ggplot(data = tb2plot, aes(x = a_level, y = mf_a, fill = is_med)) +
   theme(axis.text = element_text(size = 12, color = "black"))
 ```
 
+Plot model-free attitude, bar plot, seprate domain
+```{r}
+# barplot
+# risk
+
+# Medical
+tb2plot <- data_summary(data_mfr[data_mfr$is_med==1, ], varname ='mf_r', groupnames = c('r_level', 'is_med'))
+
+ggplot(data = tb2plot, aes(x = r_level, y = mf_r, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_r-sd, ymax=mf_r+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c( 'darkorange3'), labels = c('Medical')) +
+  theme_classic() +
+  ggtitle('Model-free risk attitude, Medical') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# Monetary
+tb2plot <- data_summary(data_mfr[data_mfr$is_med==0, ], varname ='mf_r', groupnames = c('r_level', 'is_med'))
+
+ggplot(data = tb2plot, aes(x = r_level, y = mf_r, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_r-sd, ymax=mf_r+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c( 'olivedrab'), labels = c('Monetary')) +
+  theme_classic() +
+  ggtitle('Model-free risk attitude, Monetary') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# ambiguity
+
+# Medical
+tb2plot <- data_summary(data_mfa[data_mfr$is_med==1, ], varname ='mf_a', groupnames = c('a_level','is_med'))
+
+ggplot(data = tb2plot, aes(x = a_level, y = mf_a, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_a-sd, ymax=mf_a+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c('darkorange3'), labels = c('Medical')) +
+  theme_classic() +
+  ggtitle('Model-free ambiguity attitude, Medical') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# Monetary
+tb2plot <- data_summary(data_mfa[data_mfr$is_med==0, ], varname ='mf_a', groupnames = c('a_level','is_med'))
+
+ggplot(data = tb2plot, aes(x = a_level, y = mf_a, fill = is_med)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_a-sd, ymax=mf_a+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  scale_fill_manual(values = c('olivedrab'), labels = c('Monetary')) +
+  theme_classic() +
+  ggtitle('Model-free ambiguity attitude, Monetary') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+```
+
+Plot model-free attitude, bar plot, seprate domain, separate gender
+```{r}
+# barplot
+# risk
+# Medical
+sum(data_mfr$is_med==1 & data_mfr$r_level == 25 & data_mfr$is_male == 0)
+sum(data_mfr$is_med==1 & data_mfr$r_level == 25 & data_mfr$is_male == 1)
+
+tb2plot <- data_summary(data_mfr[data_mfr$is_med==1, ], varname ='mf_r', groupnames = c('r_level', 'is_male'))
+
+ggplot(data = tb2plot, aes(x = r_level, y = mf_r, fill = is_male)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_r-sd, ymax=mf_r+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(limits = c(0,1), values = c( 'darkorange3'), labels = c('Female', 'Male')) +
+  theme_classic() +
+  ggtitle('Risky Trials, Medical') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# Monetary
+tb2plot <- data_summary(data_mfr[data_mfr$is_med==0, ], varname ='mf_r', groupnames = c('r_level', 'is_male'))
+
+ggplot(data = tb2plot, aes(x = r_level, y = mf_r, fill = is_male)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_r-sd, ymax=mf_r+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(values = c( 'olivedrab'), labels = c('Monetary')) +
+  theme_classic() +
+  ggtitle('Risky Trials, Monetary') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# ambiguity
+# Medical
+tb2plot <- data_summary(data_mfa[data_mfr$is_med==1, ], varname ='mf_a', groupnames = c('a_level','is_male'))
+
+ggplot(data = tb2plot, aes(x = a_level, y = mf_a, fill = is_male)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_a-sd, ymax=mf_a+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(values = c('darkorange3'), labels = c('Medical')) +
+  theme_classic() +
+  ggtitle('Ambiguous Trials, Medical') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# Monetary
+tb2plot <- data_summary(data_mfa[data_mfr$is_med==0, ], varname ='mf_a', groupnames = c('a_level','is_male'))
+
+ggplot(data = tb2plot, aes(x = a_level, y = mf_a, fill = is_male)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=mf_a-sd, ymax=mf_a+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual(values = c('olivedrab'), labels = c('Monetary')) +
+  theme_classic() +
+  ggtitle('Ambiguous Trials, Monetary') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# Anova
+compare_gender <- ezANOVA(data_mfr[data_mfr$is_med==1, ],
+                          dv = mf_r,
+                          wid = id,
+                          within = r_level,
+                          between = is_male,
+                          type = 3)
+print(compare_gender)
+
+compare_gender <- ezANOVA(data_mfr[data_mfr$is_med==0, ],
+                          dv = mf_r,
+                          wid = id,
+                          within = r_level,
+                          between = is_male,
+                          type = 3)
+print(compare_gender)
+
+compare_gender <- ezANOVA(data_mfa[data_mfa$is_med==1, ],
+                          dv = mf_a,
+                          wid = id,
+                          within = a_level,
+                          between = is_male,
+                          type = 3)
+print(compare_gender)
+
+compare_gender <- ezANOVA(data_mfa[data_mfa$is_med==0, ],
+                          dv = mf_a,
+                          wid = id,
+                          within = a_level,
+                          between = is_male,
+                          type = 3)
+print(compare_gender)
+```
+
+
 
 Plot model-based attitude group average
 ```{r}
 y2plot = 'beta_t'
 
 # barplot
-tb2plot <- data_summary(data, varname = y2plot, groupnames = c('is_med'))
-ggplot(data = tb2plot, aes(x = is_med, y = eval(parse(text = y2plot)), fill = is_med)) +
+tb2plot <- data_summary(data[data$beta_t > -5,], varname = y2plot, groupnames = c('is_med', 'is_male'))
+ggplot(data = tb2plot, aes(x = is_med, y = eval(parse(text = y2plot)), fill = is_male)) +
   geom_bar(stat="identity", position=position_dodge()) +
   geom_errorbar(aes(ymin=eval(parse(text = y2plot))-sd, ymax=eval(parse(text = y2plot))+sd), width=0.1, size=1, position=position_dodge(0.9)) +
-  scale_fill_manual(values = c('olivedrab', 'darkorange3'), labels = c('Monetary', 'Medical')) +
+  # scale_fill_manual(values = c('olivedrab', 'darkorange3'), labels = c('Monetary', 'Medical')) +
   theme_classic() +
   scale_x_discrete(limits=c("1", "0"), labels=c("Medical","Monetary")) +
   ggtitle(paste(y2plot)) + ylab(y2plot) +
@@ -220,15 +817,37 @@ ggplot(data = tb2plot, aes(x = is_med, y = eval(parse(text = y2plot)), fill = is
   theme(axis.ticks = element_line(size = 1, color = "black")) +
   theme(axis.text = element_text(size = 12, color = "black"))
 
+t.test(data$beta_t[data$is_med == 1 & data$is_exclude_behavior == 0], mu = 0)
+t.test(data$beta_t[data$is_med == 0 & data$is_exclude_behavior == 0], mu = 0)
+
+p.adjust(c(5.408e-05, 0.003559), method = "fdr")
+
+t.test(data$beta_t[data$is_med == 1 & data$is_exclude_behavior == 0], 
+       data$beta_t[data$is_med == 0 & data$is_exclude_behavior == 0], 
+       paired = TRUE)
+
+t.test(data$beta_t[data$is_med == 1 & data$is_exclude_behavior == 0 & data$is_male == 0 & data$beta_t > -1.5], 
+       data$beta_t[data$is_med == 1 & data$is_exclude_behavior == 0 & data$is_male == 1 & data$beta_t > -1.5], 
+       paired = FALSE)
+
+t.test(data$beta_t[data$is_med == 1 & data$is_exclude_behavior == 0 & data$is_male == 0 ], 
+       data$beta_t[data$is_med == 1 & data$is_exclude_behavior == 0 & data$is_male == 1 ], 
+       paired = FALSE)
+
+t.test(data$beta_t[data$is_med == 0 & data$is_exclude_behavior == 0 & data$is_male == 0 & data$beta_t > -5], 
+       data$beta_t[data$is_med == 0 & data$is_exclude_behavior == 0 & data$is_male == 1 & data$beta_t > -5], 
+       paired = FALSE)
+
 # violin plot
-ggplot(data, aes(is_med, eval(parse(text = y2plot)), color = is_med)) +
+ggplot(data, aes(is_med, eval(parse(text = y2plot)), color = is_male)) +
+# ggplot(data[data$beta_t > -5,], aes(is_male, eval(parse(text = y2plot)), color = is_med)) +
   geom_violin(trim=FALSE, alpha = 0.6, size = 1) +
   # stat_summary(fun.data=data_meanstd, geom="pointrange", color = "red",
   #              position = position_dodge(0.9)) + # mean and std
-  geom_boxplot(width = 0.05, size = 0.8) + # box plot
+  geom_boxplot(width = 0.05, size = 1, position = position_dodge(0.9)) + # box plot
   geom_jitter(shape = 16, position=position_jitter(0.1), alpha = 0.5) +
   # scale_fill_manual(values = c('olivedrab', 'darkorange3'), labels = c('Monetary', 'Medical')) +
-  scale_color_manual(values = c('olivedrab', 'darkorange3'), labels = c('Monetary', 'Medical')) +
+  # scale_color_manual(values = c('olivedrab', 'darkorange3'), labels = c('Monetary', 'Medical')) +
   theme_classic() +
   scale_x_discrete(limits=c("1", "0"), labels=c("Medical","Monetary")) +
   ggtitle(y2plot) +
@@ -238,7 +857,116 @@ ggplot(data, aes(is_med, eval(parse(text = y2plot)), color = is_med)) +
 
   
 ```
+Correlation between attitude and age, bar plot, seprate domain, age
+```{r}
+# barplot
 
+ggplot(data_mfr[data_mfr$is_med==1 & data_mfr$r_level == 25,], aes(x=age_year, fill = is_male)) +
+  geom_histogram()
+
+ggplot(data_mfr[data_mfr$is_med==1 & data_mfr$r_level == 25,], aes(x=age_year)) +
+  geom_histogram()
+  
+# risk
+# Medical
+ggplot(data[data$is_med == 0, ], aes(x=age_year, y=r_med)) +
+  geom_point(size = 4) +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle('Medical Risk') + xlab("Age") + ylab("Choice Proportion") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+# Monetary
+ggplot(data[data$is_med == 0, ], aes(x=age_year, y=r_mon)) +
+  geom_point(size = 4) +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle('Monetary Risk') + xlab("Age") + ylab("Choice Proportion") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+# Ambiguity
+# Medical
+ggplot(data_medmon, aes(x=age_year, y=a_r50_med)) +
+  geom_point(size = 4) +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle('Medical Ambiguous') + xlab("Age") + ylab("Corrected Choice Proportion") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+# Monetary
+ggplot(data_medmon, aes(x=age_year, y=a_r50_mon)) +
+  geom_point(size = 4) +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle('Monetary Ambiguous') + xlab("Age") + ylab("Corrected Choice Proportion") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+# Model-based (beta) Ambiguity
+# Medical
+ggplot(data_medmon, aes(x=age_year, y=beta_t_med)) +
+  geom_point(size = 4) +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle('Medical Ambiguous') + xlab("Age") + ylab("Ambiguity Attitute (-beta)") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+# Monetary
+ggplot(data_medmon, aes(x=age_year, y=beta_t_mon)) +
+  geom_point(size = 4) +
+  geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
+  # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
+  # scale_y_continuous(limits=c(-2.5, 1), breaks = seq(-2.5, 1, 0.5))  +
+  theme_classic()+
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black")) +
+  ggtitle('Monetary Ambiguous') + xlab("Age") + ylab("Ambiguity Attitute (-beta)") +
+  theme(axis.title.y=element_text(size = 12)) +
+  theme(axis.title.x=element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
+
+print(corr.test(x=data_medmon$age_year,
+                y=data_medmon$beta_t_med,
+                method = "spearman",
+                adjust = "none",
+                alpha=.05), 
+      digits = 4)
+```
 
 Correlation between risk and ambiguity attitude
 ```{r}
@@ -331,7 +1059,7 @@ print(corr.test(x=data_medmon$a_r50_mon,
                 alpha=.05), 
       digits = 4)
 
-ggplot(data_medmon, aes(x=beta_t_mon, y=beta_t_med)) +
+ggplot(data_medmon[data_medmon$id != 2588 & data_medmon$id != 2656, ], aes(x=beta_t_mon, y=beta_t_med)) +
   geom_point(size = 4) +
   geom_smooth(method=lm, se=TRUE, linetype="dashed", color = "black") +
   # scale_x_continuous(limits=c(0, 120), breaks = seq(0,120,30)) +
@@ -345,9 +1073,9 @@ ggplot(data_medmon, aes(x=beta_t_mon, y=beta_t_med)) +
   theme(axis.title.x=element_text(size = 12)) +
   theme(axis.title = element_text(size = 12))
 
-print(corr.test(x=data_medmon$beta_t_mon,
-                y=data_medmon$beta_t_med,
-                method = "spearman",
+print(corr.test(x=data_medmon[data_medmon$id != 2588 & data_medmon$id != 2656, ]$beta_t_mon,
+                y=data_medmon[data_medmon$id != 2588 & data_medmon$id != 2656, ]$beta_t_med,
+                method = "pearson",
                 adjust = "none",
                 alpha=.05), 
       digits = 4)
@@ -540,7 +1268,23 @@ data_level$level = as.factor(data_level$level)
 
 ```
 
+Plot fitted value against outcome levels
+```{r}
+alpha_value <- 0.5
+ggplot(data_level[data_level$is_med == 1, ], aes(x = as.numeric(level), y = val, color = id)) +
+  geom_point(size = 2) + geom_line(size = 1, alpha = alpha_value) +
+  scale_color_viridis(discrete = TRUE, option = "A") +
+  theme(panel.background = element_rect(fill = "grey80")) +
+  ggtitle('Fitted value, Medical')
 
+ggplot(data_level[data_level$is_med == 0, ], aes(x = obj_val, y = val, color = id)) +
+  geom_point(size = 2) + geom_line(size = 1, alpha = alpha_value) +
+  scale_color_viridis(discrete = TRUE, option = "A") +
+  theme(panel.background = element_rect(fill = "grey80")) +
+  ggtitle('Fitted value, Monetary')
+```
+
+Plot fitted value agains rating
 ```{r}
 alpha_value <- 0.5
 ggplot(data_level[data_level$is_med == 1, ], aes(x = rating, y = val, color = id)) +
@@ -653,7 +1397,7 @@ anova(model_linear, model_quad)
 anova(model_quad, model_cub)
 ```
 
-Plot ratings
+Plot ratings, individual participants
 ```{r}
 
 # alpha_value <- 0.5
@@ -684,6 +1428,31 @@ ggplot(data_level[data_level$is_med == 0 & is.element(data_level$id, p2plot), ],
   theme(panel.background = element_rect(fill = "grey80")) +
   ggtitle('Rating of each outcome level, Monetary')
 ```
+
+Plot ratings, group average
+```{r}
+data_plot <- data_summary(data_level[data_level$is_med == 1, ], varname = "rating", group = c("level", "is_med"))
+
+# sum(data_level$is_med == 1)/5
+# View(data_plot)
+
+ggplot(data_plot, aes(x = as.numeric(level), y = rating, color = is_med)) +
+  geom_point(size = 2, color = "darkorange3", ) + geom_line(size = 1, color = "darkorange3") +
+  geom_errorbar(aes(ymin=rating-sd, ymax=rating+sd), color = "darkorange3", width=0.1, size=1) +
+  theme(panel.background = element_rect(fill = "grey80")) +
+  ggtitle('Rating of each outcome level, Medical')
+
+data_plot <- data_summary(data_level[data_level$is_med == 0, ], varname = "rating", group = c("obj_val", "is_med"))
+
+ggplot(data_plot, aes(x = as.numeric(obj_val), y = rating, color = is_med)) +
+  geom_point(size = 2, color = "olivedrab", ) + geom_line(size = 1, color = "olivedrab") +
+  geom_errorbar(aes(ymin=rating-sd, ymax=rating+sd), color = "olivedrab", width=0.6, size=1) +
+  scale_x_continuous(limits = c(0,25), breaks = seq(0,25,5)) + 
+  scale_y_continuous(limits = c(0,100), breaks = seq(0,100,25)) +
+  theme(panel.background = element_rect(fill = "grey80")) +
+  ggtitle('Rating of each outcome level, Monetary')
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
