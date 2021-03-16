@@ -11,8 +11,8 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 library(ggplot2)
 library(PerformanceAnalytics)
 library(psych)
-library(tidyverse)
-
+library(dplyr)
+library(viridis)
 ```
 
 ```{r}
@@ -38,38 +38,519 @@ data_summary <- function(data, varname, groupnames){
 }
 ```
 
-Load data sheet
+```{r}
+data_summary_sd <- function(data, varname, groupnames){
+  # Function to calculate the mean and the standard deviation
+  # for each group
+  #+++++++++++++++++++++++++
+  # data : a data frame
+  # varname : the name of a column containing the variable
+  #to be summariezed
+  # groupnames : vector of column names to be used as
+  # grouping variables
+  
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+```
+
+# Load data sheet
 ```{r}
 fitpar_path <- 'E:/Ruonan/Projects in the lab/MDM Project/Medical Decision Making Imaging/MDM_imaging/Behavioral Analysis/Behavior Analysis'
 setwd(fitpar_path)
 
-fit1 <- read.csv('par_09300219.csv', header = TRUE)
-fit <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
+load("data_all_01272020.rda")
+data_all$beta_t <- -data_all$beta
+
+fit_ambigOnly <- read.csv('par_ambigOnly_02022021.csv', header = TRUE)
+fit_original <- read.csv('MDM_model_fitting_parameters.csv', header = TRUE)
+fit_svPar <- read.csv('par_SV100_050520.csv', header = TRUE)
 log <- read.csv("log_11082019.csv", header = TRUE)
 
 ```
 
-
-Clean data sheet
 ```{r}
-View(fit1)
-View(fit)
+data_task <- data_all[data_all$is_med == 0 & data_all$is_exclude_behavior == 0, ]
+```
 
-fit2 = fit[fit$model == 'ambigNrisk' & fit$fitby == 'rating', ]
-fit3 = fit[fit$model == 'ambigNrisk' & fit$fitby == 'arbitrary', ]
-fit4 = fit[fit$model== 'ambigNrisk' & fit$fitby == 'value', ]
+
+# Clean data sheet
+```{r}
+# View(fit1)
+# View(fit)
+
+fit_original = fit_original[fit_original$model == 'ambigNrisk' & fit_original$fitby == 'value' & fit_original$is_med == 0, ]
+# fit3 = fit[fit$model == 'ambigNrisk' & fit$fitby == 'arbitrary', ]
+# fit4 = fit[fit$model== 'ambigNrisk' & fit$fitby == 'value', ]
 # included subjects
-ids = unique(log$id[log$is_exclude_behavior == 0])
+include_ids = unique(log$id[log$is_exclude_behavior == 0])
 
-ids
+include_ids
 ```
 
 combine table
-```{r}
-names(fit1)
-names(fit2)
-names(fit3)
 
+```{r}
+colnames(fit_ambigOnly)
+fit_ambigOnly <- fit_ambigOnly[, 1:10] # monetary
+# fit_ambigOnly <- fit_ambigOnly[, c(1, 11:19)]
+
+
+colnames(fit_svPar)
+fit_svPar <- fit_svPar[fit_svPar$is_med==0, ]
+```
+
+```{r}
+colnames(fit_ambigOnly) <- c("id", "beta", "gamma", "LL", "r2", "AIC", "BIC", "model", "exitFlag", "optimizer")
+
+fit_ambigOnly$is_med <- 0
+fit_ambigOnly$is_med <- 1
+fit_ambigOnly$alpha <- NaN
+
+```
+
+```{r}
+fit_original <- fit_original %>% select(id, alpha, beta, gamma, LL, r2, AIC, BIC, model, is_med)
+fit_ambigOnly <- fit_ambigOnly %>% select(id, alpha, beta, gamma, LL, r2, AIC, BIC, model, is_med)
+
+colnames(fit_svPar)
+fit_svPar <- fit_svPar %>% select(id, alpha, beta, gamma, LL, r2_adj, AIC, BIC, model, is_med)
+fit_svPar <- fit_svPar %>% select(id, alpha, beta, gamma, LL, r2_adj, AIC, BIC, model, is_med, val1, val2, val3, val4)
+colnames(fit_svPar)[6] <- "r2"
+fit_all <- rbind(fit_original, fit_ambigOnly, fit_svPar)
+
+fit_all
+```
+
+```{r}
+# check number of participants
+nrow(fit_all[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]),])/3
+
+include_idx <- is.element(fit_all$id, log$id[log$is_exclude_behavior==0])
+```
+
+# choice predicted by model
+calculate P(lottery)
+
+## make trials
+```{r}
+val <- c(5, 8, 12, 25)
+type <- c("risk", "ambig")
+uncert <- c(1, 2, 3)
+
+trial <- expand.grid(val = val, type = type, uncert = uncert)
+
+trial$p <- NA
+trial$a <- NA
+
+
+trial$p[trial$type == "ambig"] <- 0.5
+trial$a[trial$type == "risk"] <- 0
+
+trial$p[(trial$type == "risk") & (trial$uncert == 1)] <- 0.25
+trial$p[(trial$type == "risk") & (trial$uncert == 2)] <- 0.5
+trial$p[(trial$type == "risk") & (trial$uncert == 3)] <- 0.75
+
+trial$a[(trial$type == "ambig") & (trial$uncert == 1)] <- 0.24
+trial$a[(trial$type == "ambig") & (trial$uncert == 2)] <- 0.5
+trial$a[(trial$type == "ambig") & (trial$uncert == 3)] <- 0.74
+
+trial
+ 
+```
+
+## calculate choice probability predicted by model
+```{r}
+
+sub_idx <- 2
+id <- fit_original$id[sub_idx]
+
+alpha <- fit_original$alpha[sub_idx]
+beta <- fit_original$beta[sub_idx]
+gamma <- fit_original$gamma[sub_idx]
+
+
+trial$sv <- (trial$p - beta * trial$a / 2) * trial$val ^ alpha
+trial$sv_ref <- 5 ^ alpha
+
+trial$choice_p <- 1/(1 + exp(gamma*(trial$sv - trial$sv_ref)))
+
+# View(trial)
+trial$val <- ordered(trial$val)
+trial$p <- ordered(trial$p)
+trial$a <- ordered(trial$a)
+
+```
+
+```{r}
+# plot
+# by value, risky trials
+data2plot <- data_summary_sd(trial[trial$type =="risk", ], "choice_p", "val")
+
+ggplot(data2plot, aes(x = val, y = choice_p)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=choice_p-sd, ymax=choice_p+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Model-predicted choice probability, Risky trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# by value, ambiguous trials
+data2plot <- data_summary_sd(trial[trial$type =="ambig", ], "choice_p", "val")
+
+ggplot(data2plot, aes(x = val, y = choice_p)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=choice_p-sd, ymax=choice_p+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Model-predicted choice probability, Ambiguous trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+
+# by risk level, risk trials
+data2plot <- data_summary_sd(trial[trial$type =="risk", ], "choice_p", "p")
+
+ggplot(data2plot, aes(x = p, y = choice_p)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=choice_p-sd, ymax=choice_p+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Model-predicted choice probability, Risky trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# by ambiguity level, ambiguous trials
+data2plot <- data_summary_sd(trial[trial$type =="ambig", ], "choice_p", "a")
+
+ggplot(data2plot, aes(x = a, y = choice_p)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=choice_p-sd, ymax=choice_p+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Model-predicted choice probability, Risky trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+```
+
+## plot real choice
+```{r}
+data_sub <- data_task[data_task$id==id,]
+
+# reorganize
+
+colnames(data_sub)
+
+choice_sub <- select(data_sub, r25, r50, r75, a24, a50, a74)
+
+choice_sub <- as.data.frame(t(choice_sub))
+
+colnames(choice_sub) <- "choice_p"
+
+choice_sub
+choice_sub$type <- c("risk", "risk", "risk", "ambig", "ambig", "ambig")
+choice_sub$p <- c(0.25, 0.5, 0.75, 0.5, 0.5, 0.5)
+choice_sub$a <- c(0, 0, 0, 0.24, 0.5, 0.74)
+
+choice_sub$p <- ordered(choice_sub$p)
+choice_sub$a <- ordered(choice_sub$a)
+```
+
+```{r}
+# by risk level, risk trials
+ggplot(choice_sub[choice_sub$type == "risk",], aes(x = p, y = choice_p)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Model-predicted choice probability, Risky trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+# by ambiguity level, ambiguous trials
+ggplot(choice_sub[choice_sub$type == "ambig",], aes(x = a, y = choice_p)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Model-predicted choice probability, Risky trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+```
+
+## plot model-predicted and real behavior side-by-side
+```{r}
+# by risk level, risky trials
+model_predict <- data_summary_sd(trial[trial$type =="risk", ], "choice_p", "p")
+
+real_choice <- choice_sub[choice_sub$type == "risk",]
+
+model_predict$method <- "model_fitted"
+real_choice$method <- "choice"
+
+model_predict <- select(model_predict, p, choice_p, method)
+real_choice <- select(real_choice, p, choice_p, method)
+
+compare2plot <- rbind(model_predict, real_choice)
+
+ggplot(compare2plot, aes(x = p, y = choice_p, fill = method)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Compare model-fitted and real choice, Risky trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+
+
+# by ambiguity level, ambiguous trials
+model_predict <- data_summary_sd(trial[trial$type =="ambig", ], "choice_p", "a")
+
+real_choice <- choice_sub[choice_sub$type == "ambig",]
+
+model_predict$method <- "model_fitted"
+real_choice$method <- "choice"
+
+model_predict <- select(model_predict, a, choice_p, method)
+real_choice <- select(real_choice, a, choice_p, method)
+
+compare2plot <- rbind(model_predict, real_choice)
+
+ggplot(compare2plot, aes(x = a, y = choice_p, fill = method)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Compare model-fitted and real choice, Ambiguous trials') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+```
+
+
+plot by outcome, and risk/ambiguity level
+
+plot the choices
+
+compare
+
+compare on average
+
+compare each subject
+
+
+# BIC
+```{r}
+fit_plot <- data_summary(fit_all[include_idx,], varname = "BIC", groupnames=c("model"))
+
+ggplot(data = fit_plot, aes(x = model, y = BIC, fill = model)) +
+  geom_bar(stat="identity", position=position_dodge(0.85), width = 0.8) +
+  geom_errorbar(aes(ymin=BIC-sd, ymax=BIC+sd), width=0.1, size=1, position=position_dodge(0.85)) +
+  # scale_fill_manual() +
+  theme_classic() +
+  ggtitle('Compare model fitting') +
+  theme(axis.line = element_line(size = 1)) +
+  theme(axis.ticks = element_line(size = 1, color = "black")) +
+  theme(axis.text = element_text(size = 12, color = "black"))
+```
+
+```{r}
+fit_scatter <- data.frame(beta_ambigNrisk = fit_all$beta[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]) & fit_all$model == "ambigNrisk"],
+                          beta_ambigOnly = fit_all$beta[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]) & fit_all$model == "ambigOnly"],
+                          beta_svPar = fit_all$beta[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]) & fit_all$model == "ambigSVPar"],
+                          gamma_ambigNrisk = fit_all$gamma[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]) & fit_all$model == "ambigNrisk"],
+                          gamma_ambigOnly = fit_all$gamma[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]) & fit_all$model == "ambigOnly"],
+                          gamma_svPar = fit_all$gamma[is.element(fit_all$id, log$id[log$is_exclude_behavior==0]) & fit_all$model == "ambigSVPar"])
+
+
+ggplot(fit_scatter, aes(x=beta_ambigNrisk, y=beta_ambigOnly)) +
+  geom_point() 
+  # scale_x_continuous(limits = c(-0.8, 1.7)) +
+  # scale_y_continuous(limits=c(-3, 5))
+
+ggplot(fit_scatter, aes(x=gamma_ambigNrisk, y=gamma_ambigOnly)) +
+  geom_point() 
+  # scale_y_continuous(limits = c(-15, 1))
+```
+
+# Medical arbitrary ambigNrisk model, plot the subjective value
+```{r}
+val_arb = c(0, 1, 2, 3, 4)
+
+fit_original$val0_recov <- val_arb[1]^fit_original$alpha
+fit_original$val1_recov <- val_arb[2]^fit_original$alpha
+fit_original$val2_recov <- val_arb[3]^fit_original$alpha
+fit_original$val3_recov <- val_arb[4]^fit_original$alpha
+fit_original$val4_recov <- val_arb[5]^fit_original$alpha
+
+
+fit_original$val4_recov
+
+```
+
+# Monetary objective value ambigNrisk model, plot the subjective value
+```{r}
+val_arb = c(0, 5, 8, 12, 25)
+
+fit_original$val0_recov <- val_arb[1]^fit_original$alpha
+fit_original$val1_recov <- val_arb[2]^fit_original$alpha
+fit_original$val2_recov <- val_arb[3]^fit_original$alpha
+fit_original$val3_recov <- val_arb[4]^fit_original$alpha
+fit_original$val4_recov <- val_arb[5]^fit_original$alpha
+
+
+fit_original$val4_recov
+
+```
+
+## reorganize sheet
+
+original model, arbitrary value
+```{r}
+idx = 1
+# rm(list=c("estimate_original", "estimate_single"))
+
+for (val_level in c("0", "1", "2", "3", "4")) {
+
+  estimate_single = fit_original %>% select(id, contains(paste("val", val_level, sep = "")))
+  
+  estimate_single$val_level = as.numeric(val_level)
+  
+  names(estimate_single)[2] = "val_original" 
+  
+  if (idx == 1) {
+    estimate_original = estimate_single
+  } else {
+    estimate_original = rbind(estimate_original, estimate_single)
+  }
+  
+  idx = idx + 1
+
+  
+}
+
+estimate_original$id <- as.factor(estimate_original$id)
+```
+
+
+ambigSVPar model
+```{r}
+idx = 1
+# rm(list=c("estimate_svPar", "estimate_single"))
+
+for (val_level in c("0", "1", "2", "3", "4")) {
+
+  if (val_level == "0") {
+    estimate_single = fit_svPar %>% select(id, val1)    
+    estimate_single$val1 = 0
+  }  else {
+    estimate_single = fit_svPar %>% select(id, contains(paste("val", val_level, sep = "")))
+  }
+  
+  estimate_single$val_level = as.numeric(val_level)
+  
+  names(estimate_single)[2] = "val_svPar" 
+
+  if (idx == 1) {
+    estimate_svPar = estimate_single
+  } else {
+    estimate_svPar = rbind(estimate_svPar, estimate_single)
+  }
+  
+  idx = idx + 1
+  
+}
+
+estimate_svPar$id <- as.factor(estimate_svPar$id)
+```
+
+```{r}
+estimate <- merge(estimate_original, estimate_svPar, by=c("id", "val_level"))
+```
+
+
+## Normzlize model-estimated sv and subjective rating
+```{r}
+
+ids <- unique(estimate$id)
+
+estimate$val_original_norm = NA
+estimate$val_svPar_norm = NA
+
+for (id in ids){
+  estimate$val_original_norm[estimate$id==id] <- scale(estimate$val_original[estimate$id==id], center = TRUE, scale = TRUE)
+  
+    estimate$val_svPar_norm[estimate$id==id] <- scale(estimate$val_svPar[estimate$id==id], center = TRUE, scale = TRUE)
+}
+
+```
+
+monetary objective values
+```{r}
+colnames(estimate)
+estimate$val_objective <- 0
+
+estimate$val_objective[estimate$val_level==1] <- 5
+estimate$val_objective[estimate$val_level==2] <- 8
+estimate$val_objective[estimate$val_level==3] <- 12
+estimate$val_objective[estimate$val_level==4] <- 25
+
+```
+
+## plot
+
+```{r}
+plot_idx <- is.element(estimate$id, include_ids)
+```
+
+original model estimated value against level
+```{r}
+alpha_value <- 0.5
+ggplot(estimate[plot_idx,], aes(x = val_objective, y = val_original_norm, color = id)) +
+  geom_point(size = 2) + geom_line(size = 1, alpha = alpha_value) +
+  scale_color_viridis(discrete = TRUE, option = "A") +
+  theme(panel.background = element_rect(fill = "grey80"),
+        legend.position="none") +
+  ggtitle('Model-estimate subjective value, Original model')
+
+```
+
+ambigSVPar model estimated value against level
+```{r}
+alpha_value <- 0.5
+ggplot(estimate[plot_idx,], aes(x = val_objective, y = val_svPar_norm, color = id)) +
+  geom_point(size = 2) + geom_line(size = 1, alpha = alpha_value) +
+  scale_color_viridis(discrete = TRUE, option = "A") +
+  theme(panel.background = element_rect(fill = "grey80"),
+        legend.position="none") +
+  ggtitle('Model-estimate subjective value, ambigSVPar model')
+
+```
+
+ambigSVPar model estimated value against original model estimated value
+```{r}
+alpha_value <- 0.2
+ggplot(estimate[plot_idx,], aes(x = val_original_norm, y = val_svPar_norm, color = id)) +
+  geom_point(size = 1) + geom_line(size = 1, alpha = alpha_value) +
+  scale_color_viridis(discrete = TRUE, option = "A") +
+  theme(panel.background = element_rect(fill = "grey80"),
+        legend.position = "none") +
+  ggtitle('Model-fitted value comparison')
+```
+
+# older
+```{r}
 fit_1 = fit1 %>% select((id),(is_med),(alpha),(beta),(gamma),(val1), (val2), (val3), (val4), (LL),(AIC),(BIC),(model))
 
 fit_2 = fit2 %>% select((id),(is_med),(alpha),(beta),(gamma),(LL),(AIC),(BIC),(model))
